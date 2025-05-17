@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Blind XSS Logs</title></head>
+<body>
+<h1>Blind XSS Logs</h1>
+{% for log in logs %}
+  <div style="border:1px solid #000; margin:10px; padding:10px;">
+    <p><strong>Time:</strong> {{ log.timestamp }}</p>
+    <p><strong>IP:</strong> {{ log.ip }}</p>
+    <p><strong>User-Agent:</strong> {{ log.user_agent }}</p>
+    <p><strong>Referrer:</strong> {{ log.referrer }}</p>
+    <p><strong>URL:</strong> {{ log.url }}</p>
+    {% if log.screenshot %}
+      <p><strong>Screenshot:</strong><br><img src="{{ log.screenshot }}" width="400"/></p>
+    {% endif %}
+    <details><summary><strong>Headers</strong></summary>
+    <pre>{{ log.headers }}</pre>
+    </details>
+  </div>
+{% endfor %}
+</body>
+</html>
